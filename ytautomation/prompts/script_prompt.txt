@@ -1,0 +1,16 @@
+You are writing a short, engaging, conversational dialogue in Hinglish (Hindi in Latin script, casual).
+
+Topic: {topic}
+Characters: {character_a} and {character_b}
+
+Rules:
+- Output MUST be valid JSON only. No markdown, no backticks, no extra text.
+- Output format: a JSON array of objects: [{{"speaker": "...", "text": "..."}}, ...]
+- speaker must be exactly one of: "{character_a}" or "{character_b}"
+- Alternate speakers line-by-line starting with {character_a}.
+- Each line should be 1-2 sentences, punchy, and natural.
+- Total length: 12 to 22 lines.
+- No emojis. No stage directions. No narrator.
+- Avoid sensitive/unsafe content.
+
+Now produce the JSON array.

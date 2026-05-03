@@ -1,0 +1,1772 @@
+
+
+----- File: E:\Youtube automation\all_code_snippets.txt -----
+
+
+----- File: E:\Youtube automation\copy_utils.py -----
+import os
+
+# Root directory to start searching from
+ROOT_DIR = r"E:\Youtube automation"
+
+# File extensions to include
+INCLUDE_EXTENSIONS = {'.py', '.js', '.css', '.html', '.txt', '.json'}
+
+# Output file where combined code will be saved
+OUTPUT_FILE = os.path.join(ROOT_DIR, "all_code_snippets.txt")
+
+# Directories to exclude
+EXCLUDE_DIRS = {'venv', '__pycache__', '.git', 'node_modules', 'new-dev','leads','KMS','Admin-Panel','graphify-out'}
+
+def should_include(file_name):
+    return os.path.splitext(file_name)[1].lower() in INCLUDE_EXTENSIONS
+
+def copy_code_snippets():
+    with open(OUTPUT_FILE, 'w', encoding='utf-8') as outfile:
+        for dirpath, dirnames, filenames in os.walk(ROOT_DIR):
+            dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
+
+            for filename in filenames:
+                if should_include(filename):
+                    file_path = os.path.join(dirpath, filename)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            outfile.write(f"\n\n----- File: {file_path} -----\n")
+                            outfile.write(f.read())
+                    except Exception as e:
+                        print(f"Could not read {file_path}: {e}")
+
+    print(f"\n✅ Code snippets copied to: {OUTPUT_FILE}")
+
+if __name__ == "__main__":
+    copy_code_snippets()
+
+
+----- File: E:\Youtube automation\remove-bg-noise.py -----
+import librosa
+import noisereduce as nr
+import soundfile as sf
+
+# Load audio
+audio, sr = librosa.load("input.wav", sr=None)
+
+# Reduce noise
+reduced_noise = nr.reduce_noise(y=audio, sr=sr)
+
+# Save output
+sf.write("cleaned.wav", reduced_noise, sr)
+
+----- File: E:\Youtube automation\requirements.txt -----
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+pydantic-settings>=2.2
+python-dotenv>=1.0
+openai>=1.30
+requests>=2.31
+pandas>=2.0
+moviepy>=1.0.3
+imageio-ffmpeg>=0.5
+
+
+----- File: E:\Youtube automation\legacy\overlay-video\create-video.py -----
+from moviepy.editor import *
+
+# Load base gameplay video
+video = VideoFileClip("gameplay.mp4")
+
+# Load audio clips
+audio1 = AudioFileClip("motu_1.mp3").set_start(0)
+audio2 = AudioFileClip("patlu_1.mp3").set_start(4)
+
+# Combine audio
+final_audio = CompositeAudioClip([audio1, audio2])
+video = video.set_audio(final_audio)
+
+# Load character images
+motu_img = (
+    ImageClip("motu.png")
+    .set_start(0)
+    .set_duration(4)
+    .set_position(("left", "bottom"))
+    .resize(height=300)
+)
+
+patlu_img = (
+    ImageClip("patlu.png")
+    .set_start(4)
+    .set_duration(4)
+    .set_position(("right", "bottom"))
+    .resize(height=300)
+)
+
+# Combine everything
+final = CompositeVideoClip([video, motu_img, patlu_img])
+
+# Export
+final.write_videofile("output.mp4", fps=24)
+
+
+----- File: E:\Youtube automation\legacy\voice-scripts\cartesia.py -----
+import requests
+import os
+
+from dotenv import load_dotenv
+load_dotenv()
+
+
+# ==============================
+# CONFIG
+# ==============================
+API_URL = "https://api.cartesia.ai/tts/bytes"
+API_KEY = os.getenv("CARTESIA_API_KEY")
+CARTESIA_VERSION = "2024-06-10"  # change if needed
+
+OUTPUT_DIR = "./voice-scripts/audio_outputs"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Voice IDs
+VOICE_ANIKET = "7dbf4710-0998-4b2c-bacb-9cb25cc68572"
+VOICE_MALAY = "85f9e4e0-8ae6-4c81-a88d-dbd80bbff29a"
+
+# ==============================
+# DIALOGUE
+# ==============================
+dialogues = [
+    ("aniket", "Oye Malay, ye RAG kya hota hai? Sab log AI AI kar rahe hain 😵"),
+    ("malay", "Arre simple hai. RAG matlab Retrieval-Augmented Generation. AI pehle data dhundta hai, phir answer banata hai."),
+    ("aniket", "Matlab Google jaisa?"),
+    ("malay", "Nahi. Google links deta hai. RAG direct answer deta hai — woh bhi relevant data ke saath."),
+    ("aniket", "Achha ye data aata kahan se hai?"),
+    ("malay", "Pehle documents ko chhote chunks mein todte hain, phir unko vectors mein convert karke database mein store karte hain."),
+    ("aniket", "Vector matlab?"),
+    ("malay", "Numbers ka form. Isse AI samajhta hai kaunsa text kis topic se related hai."),
+    ("aniket", "Phir jab main question puchu?"),
+    ("malay", "Tumhara question bhi vector banega. Fir system database se similar chunks nikaalega."),
+    ("aniket", "Aur phir?"),
+    ("malay", "Fir woh chunks LLM ko milte hain, aur LLM unke basis pe answer generate karta hai."),
+    ("aniket", "Matlab AI guess nahi kar raha?"),
+    ("malay", "Exactly. Context dekh ke bol raha hai, hallucination kam."),
+    ("aniket", "Ye toh open-book exam ho gaya"),
+    ("malay", "Bilkul. Pehle notes dekho, phir answer likho, that is RAG."),
+    ("aniket", "Ab toh main bhi banaunga!"),
+    ("malay", "Bana le, bas retrieval galat hua toh pura system fail.")
+]
+
+# ==============================
+# FUNCTION
+# ==============================
+def generate_audio(text, voice_id, filename):
+    payload = {
+        "model_id": "sonic-3",  # or your preferred model
+        "transcript": text,
+        "voice": {
+            "mode": "id",
+            "id": voice_id
+        },
+        "output_format": {
+            "container": "wav",
+            "encoding": "pcm_f32le",
+            "sample_rate": 44100
+        },
+        "language": "hi",
+        "generation_config": {
+            "volume": 1,
+            "speed": 0.95,
+            "emotion": "neutral"
+        }
+    }
+
+    headers = {
+        "Cartesia-Version": CARTESIA_VERSION,
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(API_URL, json=payload, headers=headers)
+
+    if response.status_code == 200:
+        file_path = os.path.join(OUTPUT_DIR, filename)
+        with open(file_path, "wb") as f:
+            f.write(response.content)
+        print(f"Saved: {file_path}")
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+
+
+# ==============================
+# MAIN LOOP
+# ==============================
+for i, (speaker, text) in enumerate(dialogues):
+    voice_id = VOICE_ANIKET if speaker == "aniket" else VOICE_MALAY
+    filename = f"{i:02d}_{speaker}.wav"
+
+    generate_audio(text, voice_id, filename)
+
+print("\n✅ All audio files generated!")
+
+
+----- File: E:\Youtube automation\legacy\youtube-videos-download\download-yt-video.py -----
+import csv
+import yt_dlp
+from pathlib import Path
+
+base_dir = Path(__file__).parent
+csv_path = base_dir / "urls.csv"
+download_dir = base_dir / "videos"
+download_dir.mkdir(exist_ok=True)
+
+
+ydl_opts = {
+    'outtmpl': str(download_dir / '%(title)s.%(ext)s'),
+}
+
+
+def read_urls():
+    with csv_path.open("r", newline="", encoding="utf-8") as csv_file:
+        return list(csv.DictReader(csv_file))
+
+
+def update_urls(rows):
+    with csv_path.open("w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=["url", "status"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def download_video(url):
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+        print(f"Downloaded {url}")
+
+
+urls = read_urls()
+
+for row in urls:
+    url = row["url"]
+    status = row["status"].strip().lower()
+
+    if status == "false":
+        download_video(url)
+        row["status"] = "true"
+        update_urls(urls)
+    else:
+        print(f"Skipping {url} as it is already downloaded.")
+
+
+----- File: E:\Youtube automation\runs\1\status.json -----
+{
+  "job_id": "1",
+  "stage": "done",
+  "ok": true,
+  "message": null,
+  "updated_at": "2026-04-30T21:42:20.617118"
+}
+
+----- File: E:\Youtube automation\runs\1\00_input\job.json -----
+{
+  "job_id": "1",
+  "topic": "RAG explained in simple terms",
+  "character_a": "aniket",
+  "character_b": "malay",
+  "voice_id_a": null,
+  "voice_id_b": null,
+  "created_at": "2026-04-30T21:31:03.362134"
+}
+
+----- File: E:\Youtube automation\runs\1\01_script\raw.txt -----
+[{"speaker":"aniket","text":"Malay, RAG ka naam sunte hi lagta hai koi complex AI ka jhamela hai."},{"speaker":"malay","text":"Actually simple hai: RAG matlab Retrieval-Augmented Generation."},{"speaker":"aniket","text":"Haan, par seedhi Hindi mein?"},{"speaker":"malay","text":"Matlab pehle AI bahar se relevant info dhoondhta hai, phir uske basis pe answer banata hai."},{"speaker":"aniket","text":"Toh ye sirf yaad karke bolta nahi hai?"},{"speaker":"malay","text":"Exactly, ye apni memory pe fully depend nahi karta."},{"speaker":"aniket","text":"Accha, jaise exam mein open-book type?"},{"speaker":"malay","text":"Bilkul, bas open-book se bhi smart. Pehle sahi page dhoondo, phir answer likho."},{"speaker":"aniket","text":"Aur isse fayda kya hota hai?"},{"speaker":"malay","text":"Answer zyada accurate hota hai, aur outdated ya random bakwaas kam hoti hai."},{"speaker":"aniket","text":"Toh chatbot ko company ke docs de do, aur wo unhi se jawab dega?"},{"speaker":"malay","text":"Haan, yehi RAG ka strong use case hai. Docs, FAQs, policy, ya knowledge base se info laake reply deta hai."},{"speaker":"aniket","text":"Samjha. Matlab pehle retrieve, phir generate."},{"speaker":"malay","text":"Exactly. Retrieval se data aata hai, generation se us data ko simple answer mein badalta hai."},{"speaker":"aniket","text":"Toh RAG basically AI ko zyada grounded aur useful banata hai."},{"speaker":"malay","text":"Sahi pakde. Ye AI ko bolta hai: pehle check kar, phir confidently bol."}]}
+
+----- File: E:\Youtube automation\runs\1\01_script\script.json -----
+[
+  {
+    "speaker": "aniket",
+    "text": "Malay, RAG ka naam sunte hi lagta hai koi complex AI ka jhamela hai."
+  },
+  {
+    "speaker": "malay",
+    "text": "Actually simple hai: RAG matlab Retrieval-Augmented Generation."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Haan, par seedhi Hindi mein?"
+  },
+  {
+    "speaker": "malay",
+    "text": "Matlab pehle AI bahar se relevant info dhoondhta hai, phir uske basis pe answer banata hai."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Toh ye sirf yaad karke bolta nahi hai?"
+  },
+  {
+    "speaker": "malay",
+    "text": "Exactly, ye apni memory pe fully depend nahi karta."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Accha, jaise exam mein open-book type?"
+  },
+  {
+    "speaker": "malay",
+    "text": "Bilkul, bas open-book se bhi smart. Pehle sahi page dhoondo, phir answer likho."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Aur isse fayda kya hota hai?"
+  },
+  {
+    "speaker": "malay",
+    "text": "Answer zyada accurate hota hai, aur outdated ya random bakwaas kam hoti hai."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Toh chatbot ko company ke docs de do, aur wo unhi se jawab dega?"
+  },
+  {
+    "speaker": "malay",
+    "text": "Haan, yehi RAG ka strong use case hai. Docs, FAQs, policy, ya knowledge base se info laake reply deta hai."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Samjha. Matlab pehle retrieve, phir generate."
+  },
+  {
+    "speaker": "malay",
+    "text": "Exactly. Retrieval se data aata hai, generation se us data ko simple answer mein badalta hai."
+  },
+  {
+    "speaker": "aniket",
+    "text": "Toh RAG basically AI ko zyada grounded aur useful banata hai."
+  },
+  {
+    "speaker": "malay",
+    "text": "Sahi pakde. Ye AI ko bolta hai: pehle check kar, phir confidently bol."
+  }
+]
+
+----- File: E:\Youtube automation\runs\1\02_audio\audio_manifest.json -----
+{
+  "job_id": "1",
+  "clips": [
+    {
+      "index": 0,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\00_aniket.wav",
+      "duration_sec": 4.74
+    },
+    {
+      "index": 1,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\01_malay.wav",
+      "duration_sec": 4.41
+    },
+    {
+      "index": 2,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\02_aniket.wav",
+      "duration_sec": 2.69
+    },
+    {
+      "index": 3,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\03_malay.wav",
+      "duration_sec": 4.37
+    },
+    {
+      "index": 4,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\04_aniket.wav",
+      "duration_sec": 1.53
+    },
+    {
+      "index": 5,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\05_malay.wav",
+      "duration_sec": 4.64
+    },
+    {
+      "index": 6,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\06_aniket.wav",
+      "duration_sec": 2.6
+    },
+    {
+      "index": 7,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\07_malay.wav",
+      "duration_sec": 6.55
+    },
+    {
+      "index": 8,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\08_aniket.wav",
+      "duration_sec": 1.63
+    },
+    {
+      "index": 9,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\09_malay.wav",
+      "duration_sec": 4.69
+    },
+    {
+      "index": 10,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\10_aniket.wav",
+      "duration_sec": 3.72
+    },
+    {
+      "index": 11,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\11_malay.wav",
+      "duration_sec": 8.13
+    },
+    {
+      "index": 12,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\12_aniket.wav",
+      "duration_sec": 3.44
+    },
+    {
+      "index": 13,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\13_malay.wav",
+      "duration_sec": 6.41
+    },
+    {
+      "index": 14,
+      "speaker": "aniket",
+      "wav_path": "runs\\1\\02_audio\\14_aniket.wav",
+      "duration_sec": 3.44
+    },
+    {
+      "index": 15,
+      "speaker": "malay",
+      "wav_path": "runs\\1\\02_audio\\15_malay.wav",
+      "duration_sec": 6.41
+    }
+  ]
+}
+
+----- File: E:\Youtube automation\runs\1\03_timeline\timeline.json -----
+{
+  "job_id": "1",
+  "segments": [
+    {
+      "index": 0,
+      "speaker": "aniket",
+      "start_sec": 0.0,
+      "duration_sec": 4.74,
+      "audio_path": "runs\\1\\02_audio\\00_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 1,
+      "speaker": "malay",
+      "start_sec": 4.74,
+      "duration_sec": 4.41,
+      "audio_path": "runs\\1\\02_audio\\01_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 2,
+      "speaker": "aniket",
+      "start_sec": 9.15,
+      "duration_sec": 2.69,
+      "audio_path": "runs\\1\\02_audio\\02_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 3,
+      "speaker": "malay",
+      "start_sec": 11.84,
+      "duration_sec": 4.37,
+      "audio_path": "runs\\1\\02_audio\\03_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 4,
+      "speaker": "aniket",
+      "start_sec": 16.21,
+      "duration_sec": 1.53,
+      "audio_path": "runs\\1\\02_audio\\04_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 5,
+      "speaker": "malay",
+      "start_sec": 17.740000000000002,
+      "duration_sec": 4.64,
+      "audio_path": "runs\\1\\02_audio\\05_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 6,
+      "speaker": "aniket",
+      "start_sec": 22.380000000000003,
+      "duration_sec": 2.6,
+      "audio_path": "runs\\1\\02_audio\\06_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 7,
+      "speaker": "malay",
+      "start_sec": 24.980000000000004,
+      "duration_sec": 6.55,
+      "audio_path": "runs\\1\\02_audio\\07_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 8,
+      "speaker": "aniket",
+      "start_sec": 31.530000000000005,
+      "duration_sec": 1.63,
+      "audio_path": "runs\\1\\02_audio\\08_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 9,
+      "speaker": "malay",
+      "start_sec": 33.160000000000004,
+      "duration_sec": 4.69,
+      "audio_path": "runs\\1\\02_audio\\09_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 10,
+      "speaker": "aniket",
+      "start_sec": 37.85,
+      "duration_sec": 3.72,
+      "audio_path": "runs\\1\\02_audio\\10_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 11,
+      "speaker": "malay",
+      "start_sec": 41.57,
+      "duration_sec": 8.13,
+      "audio_path": "runs\\1\\02_audio\\11_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 12,
+      "speaker": "aniket",
+      "start_sec": 49.7,
+      "duration_sec": 3.44,
+      "audio_path": "runs\\1\\02_audio\\12_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 13,
+      "speaker": "malay",
+      "start_sec": 53.14,
+      "duration_sec": 6.41,
+      "audio_path": "runs\\1\\02_audio\\13_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    },
+    {
+      "index": 14,
+      "speaker": "aniket",
+      "start_sec": 59.55,
+      "duration_sec": 3.44,
+      "audio_path": "runs\\1\\02_audio\\14_aniket.wav",
+      "avatar_path": "avatars\\aniket.png"
+    },
+    {
+      "index": 15,
+      "speaker": "malay",
+      "start_sec": 62.989999999999995,
+      "duration_sec": 6.41,
+      "audio_path": "runs\\1\\02_audio\\15_malay.wav",
+      "avatar_path": "avatars\\malay.png"
+    }
+  ],
+  "total_duration_sec": 69.39999999999999
+}
+
+----- File: E:\Youtube automation\runs\1\04_render\render_plan.json -----
+{
+  "job_id": "1",
+  "gameplay_path": "youtube-videos-download\\videos\\Subway Surfers (2024) - Gameplay [4K 9x16] No Copyright.mp4",
+  "gameplay_start_sec": 43.54654205946344,
+  "total_duration_sec": 69.39999999999999,
+  "output_path": "runs\\1\\04_render\\final.mp4"
+}
+
+----- File: E:\Youtube automation\ytautomation\cli.py -----
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from ytautomation.core.logging import configure_logging
+from ytautomation.pipeline import import_jobs, run_job
+
+
+def main() -> None:
+    configure_logging()
+
+    parser = argparse.ArgumentParser(prog="ytautomation")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_import = sub.add_parser("import", help="Import jobs from CSV into runs/<job_id>/00_input")
+    p_import.add_argument("--csv", required=True, type=Path)
+
+    p_run = sub.add_parser("run", help="Run a job")
+    p_run.add_argument("--job-id", required=True)
+    p_run.add_argument("--steps", default="script,audio,timeline,render")
+    p_run.add_argument("--force", action="store_true")
+
+    args = parser.parse_args()
+
+    if args.cmd == "import":
+        jobs = import_jobs(args.csv)
+        for j in jobs:
+            print(j.job_id)
+        return
+
+    if args.cmd == "run":
+        steps = [s.strip() for s in args.steps.split(",") if s.strip()]
+        run_job(args.job_id, steps=steps, force=args.force)
+        print("done")
+        return
+
+
+if __name__ == "__main__":
+    main()
+
+
+----- File: E:\Youtube automation\ytautomation\pipeline.py -----
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+from ytautomation.core.errors import ArtifactMissingError
+from ytautomation.core.io import read_model, write_model
+from ytautomation.core.logging import configure_logging
+from ytautomation.core.models import AudioManifest, JobSpec, JobStatus, TimelineArtifact
+from ytautomation.core.paths import ensure_dirs
+from ytautomation.core.settings import Settings, get_settings
+from ytautomation.modules.csv_ingest import load_jobs_from_csv
+from ytautomation.modules.gameplay_selector import choose_gameplay_clip
+from ytautomation.modules.llm_script_generator import generate_script
+from ytautomation.modules.timeline_builder import build_timeline
+from ytautomation.modules.tts_cartesia import generate_audio
+from ytautomation.modules.video_renderer import render_video
+
+logger = logging.getLogger(__name__)
+
+
+_VALID_STEPS = {"script", "audio", "timeline", "render"}
+
+
+def _normalize_steps(steps: list[str] | None) -> list[str]:
+    if steps is None:
+        return ["script", "audio", "timeline", "render"]
+
+    normalized = [s.strip().lower() for s in steps if str(s).strip()]
+    if not normalized:
+        return ["script", "audio", "timeline", "render"]
+
+    unknown = sorted(set(normalized) - _VALID_STEPS)
+    if unknown:
+        raise ValueError(f"Unknown steps: {unknown}. Valid steps: {sorted(_VALID_STEPS)}")
+
+    # Keep original relative order while removing duplicates
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for s in normalized:
+        if s not in seen:
+            ordered.append(s)
+            seen.add(s)
+    return ordered
+
+
+def _status_path(dirs: dict[str, Path]) -> Path:
+    return dirs["input"].parent / "status.json"
+
+
+def write_status(dirs: dict[str, Path], job_id: str, stage: str, ok: bool = True, message: str | None = None) -> None:
+    write_model(_status_path(dirs), JobStatus(job_id=job_id, stage=stage, ok=ok, message=message))
+
+
+def import_jobs(csv_path: Path, settings: Settings | None = None) -> list[JobSpec]:
+    settings = settings or get_settings()
+    jobs = load_jobs_from_csv(csv_path)
+
+    for job in jobs:
+        dirs = ensure_dirs(settings.runs_dir, job.job_id)
+        write_model(dirs["input"] / "job.json", job)
+        write_status(dirs, job.job_id, stage="imported")
+
+    return jobs
+
+
+def run_job(job_id: str, steps: list[str] | None = None, force: bool = False, settings: Settings | None = None) -> None:
+    configure_logging()
+    settings = settings or get_settings()
+
+    dirs = ensure_dirs(settings.runs_dir, job_id)
+
+    job_path = dirs["input"] / "job.json"
+    if not job_path.exists():
+        raise ArtifactMissingError(f"Missing job.json. Import first for job_id={job_id}")
+
+    job = read_model(job_path, JobSpec)
+
+    steps = _normalize_steps(steps)
+
+    try:
+        if "script" in steps:
+            write_status(dirs, job_id, stage="script")
+            generate_script(job, settings, dirs["script"], force=force)
+
+        if "audio" in steps:
+            write_status(dirs, job_id, stage="audio")
+            script = generate_script(job, settings, dirs["script"], force=False)
+            generate_audio(job, script, settings, dirs["audio"], force=force)
+
+        if "timeline" in steps:
+            write_status(dirs, job_id, stage="timeline")
+            script = generate_script(job, settings, dirs["script"], force=False)
+            audio_manifest = generate_audio(job, script, settings, dirs["audio"], force=False)
+            build_timeline(job, audio_manifest, settings, dirs["timeline"])
+
+        if "render" in steps:
+            write_status(dirs, job_id, stage="render")
+            timeline_path = dirs["timeline"] / "timeline.json"
+            if not timeline_path.exists():
+                raise ArtifactMissingError("Missing timeline.json. Run steps: script,audio,timeline first.")
+            timeline = read_model(timeline_path, TimelineArtifact)
+
+            gameplay_path, start_sec = choose_gameplay_clip(settings.assets_gameplay_dir, timeline.total_duration_sec)
+            output_path = dirs["render"] / "final.mp4"
+            render_video(timeline, gameplay_path, start_sec, output_path, settings)
+
+        # Sanity check: if a step was requested, its artifact should exist.
+        if "script" in steps and not (dirs["script"] / "script.json").exists():
+            raise ArtifactMissingError("Expected script.json to exist after script step")
+        if "audio" in steps and not (dirs["audio"] / "audio_manifest.json").exists():
+            raise ArtifactMissingError("Expected audio_manifest.json to exist after audio step")
+        if "timeline" in steps and not (dirs["timeline"] / "timeline.json").exists():
+            raise ArtifactMissingError("Expected timeline.json to exist after timeline step")
+        if "render" in steps and not (dirs["render"] / "final.mp4").exists():
+            raise ArtifactMissingError("Expected final.mp4 to exist after render step")
+
+        write_status(dirs, job_id, stage="done")
+
+    except Exception as e:
+        logger.exception("Job failed")
+        write_status(dirs, job_id, stage="failed", ok=False, message=str(e))
+        raise
+
+
+----- File: E:\Youtube automation\ytautomation\__init__.py -----
+"""YouTube automation pipeline package."""
+
+__all__ = [
+    "__version__",
+]
+
+__version__ = "0.1.0"
+
+
+----- File: E:\Youtube automation\ytautomation\api\main.py -----
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Annotated
+import os
+
+from fastapi import BackgroundTasks, FastAPI, HTTPException
+from pydantic import BaseModel
+
+from ytautomation.core.settings import get_settings
+from ytautomation.core.io import read_json
+from ytautomation.pipeline import import_jobs, run_job
+
+app = FastAPI(title="YouTube Automation Pipeline", version="0.1.0")
+
+
+class ImportRequest(BaseModel):
+    csv_path: str = "data/input/topics.csv"
+
+
+class RunRequest(BaseModel):
+    steps: list[str] | None = None
+    force: bool = False
+
+
+@app.get("/healthz")
+def healthz():
+    settings = get_settings()
+    return {
+        "ok": True,
+        "cwd": os.getcwd(),
+        "runs_dir": str(settings.runs_dir),
+    }
+
+
+@app.post("/jobs/import")
+def import_endpoint(req: ImportRequest):
+    settings = get_settings()
+    csv_path = Path(req.csv_path)
+    if not csv_path.exists():
+        raise HTTPException(status_code=400, detail=f"CSV not found: {csv_path}")
+    jobs = import_jobs(csv_path, settings=settings)
+    return {"job_ids": [j.job_id for j in jobs]}
+
+
+@app.post("/jobs/{job_id}/run")
+def run_endpoint(job_id: str, req: RunRequest, background: BackgroundTasks):
+    settings = get_settings()
+
+    def _task():
+        run_job(job_id, steps=req.steps, force=req.force, settings=settings)
+
+    background.add_task(_task)
+    return {"job_id": job_id, "queued": True, "steps": req.steps, "force": req.force}
+
+
+@app.get("/jobs/{job_id}")
+def get_job(job_id: str):
+    settings = get_settings()
+
+    runs_dir = settings.runs_dir
+    try:
+        runs_dir_resolved = runs_dir.resolve()
+    except Exception:
+        runs_dir_resolved = runs_dir
+
+    job_root = runs_dir / job_id
+    status_path = job_root / "status.json"
+
+    status = None
+    if status_path.exists():
+        status = read_json(status_path)
+
+    artifacts = {
+        "job": job_root / "00_input" / "job.json",
+        "script_raw": job_root / "01_script" / "raw.txt",
+        "script_json": job_root / "01_script" / "script.json",
+        "audio_manifest": job_root / "02_audio" / "audio_manifest.json",
+        "timeline": job_root / "03_timeline" / "timeline.json",
+        "render_plan": job_root / "04_render" / "render_plan.json",
+        "final_video": job_root / "04_render" / "final.mp4",
+    }
+
+    exists = {k: p.exists() for k, p in artifacts.items()}
+
+    def _ls(p: Path):
+        if not p.exists() or not p.is_dir():
+            return []
+        return sorted([c.name for c in p.iterdir()])
+
+    stages = {
+        "00_input": _ls(job_root / "00_input"),
+        "01_script": _ls(job_root / "01_script"),
+        "02_audio": _ls(job_root / "02_audio"),
+        "03_timeline": _ls(job_root / "03_timeline"),
+        "04_render": _ls(job_root / "04_render"),
+    }
+
+    return {
+        "job_id": job_id,
+        "runs_dir": str(runs_dir),
+        "runs_dir_resolved": str(runs_dir_resolved),
+        "job_root": str(job_root),
+        "job_root_resolved": str((runs_dir_resolved / job_id)),
+        "status": status,
+        "artifacts": {k: str(v) for k, v in artifacts.items()},
+        "exists": exists,
+        "stages": stages,
+    }
+
+
+----- File: E:\Youtube automation\ytautomation\api\__init__.py -----
+
+
+----- File: E:\Youtube automation\ytautomation\core\errors.py -----
+class PipelineError(Exception):
+    """Base error for pipeline failures."""
+
+
+class ConfigError(PipelineError):
+    pass
+
+
+class ArtifactMissingError(PipelineError):
+    pass
+
+
+class ValidationError(PipelineError):
+    pass
+
+
+----- File: E:\Youtube automation\ytautomation\core\io.py -----
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def write_json(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def read_json(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_model(path: Path, model: BaseModel) -> None:
+    write_json(path, model.model_dump(mode="json"))
+
+
+def read_model(path: Path, model_type: type[T]) -> T:
+    data = read_json(path)
+    return model_type.model_validate(data)
+
+
+----- File: E:\Youtube automation\ytautomation\core\logging.py -----
+import logging
+
+
+def configure_logging(level: int = logging.INFO) -> None:
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
+
+----- File: E:\Youtube automation\ytautomation\core\models.py -----
+from __future__ import annotations
+
+from datetime import datetime
+from pathlib import Path
+from pydantic import BaseModel, Field
+
+
+class JobSpec(BaseModel):
+    job_id: str
+    topic: str
+    character_a: str
+    character_b: str
+    voice_id_a: str | None = None
+    voice_id_b: str | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DialogueLine(BaseModel):
+    speaker: str
+    text: str
+
+
+class ScriptArtifact(BaseModel):
+    job_id: str
+    prompt_used: str
+    raw_response_text_path: Path
+    parsed_script_path: Path
+    lines: list[DialogueLine]
+
+
+class AudioClipArtifact(BaseModel):
+    index: int
+    speaker: str
+    wav_path: Path
+    duration_sec: float
+
+
+class AudioManifest(BaseModel):
+    job_id: str
+    clips: list[AudioClipArtifact]
+
+
+class TimelineSegment(BaseModel):
+    index: int
+    speaker: str
+    start_sec: float
+    duration_sec: float
+    audio_path: Path
+    avatar_path: Path
+
+
+class TimelineArtifact(BaseModel):
+    job_id: str
+    segments: list[TimelineSegment]
+    total_duration_sec: float
+
+
+class RenderPlan(BaseModel):
+    job_id: str
+    gameplay_path: Path
+    gameplay_start_sec: float
+    total_duration_sec: float
+    output_path: Path
+
+
+class JobStatus(BaseModel):
+    job_id: str
+    stage: str
+    ok: bool = True
+    message: str | None = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+----- File: E:\Youtube automation\ytautomation\core\moviepy_compat.py -----
+from __future__ import annotations
+
+"""Compatibility imports for MoviePy.
+
+MoviePy v2 removed the `moviepy.editor` convenience module and renamed several
+core methods:
+- subclip -> subclipped
+- set_start -> with_start
+- set_duration -> with_duration
+- set_position -> with_position
+- resize -> resized
+- set_audio -> with_audio
+
+This shim provides common symbols + small wrappers so the rest of the codebase
+can use a stable API.
+"""
+
+from typing import Any
+
+
+def _import_from_moviepy_v2() -> dict[str, Any]:
+    from moviepy import (  # type: ignore
+        AudioFileClip,
+        CompositeAudioClip,
+        CompositeVideoClip,
+        ImageClip,
+        VideoFileClip,
+    )
+    from moviepy.video.fx import Crop as _Crop  # type: ignore
+
+    def crop(clip, x1=None, y1=None, x2=None, y2=None):
+        return _Crop(x1=x1, y1=y1, x2=x2, y2=y2).apply(clip)
+
+    return {
+        "AudioFileClip": AudioFileClip,
+        "CompositeAudioClip": CompositeAudioClip,
+        "CompositeVideoClip": CompositeVideoClip,
+        "ImageClip": ImageClip,
+        "VideoFileClip": VideoFileClip,
+        "crop": crop,
+    }
+
+
+def _import_from_moviepy_v1() -> dict[str, Any]:
+    from moviepy.editor import (  # type: ignore
+        AudioFileClip,
+        CompositeAudioClip,
+        CompositeVideoClip,
+        ImageClip,
+        VideoFileClip,
+    )
+    from moviepy.video.fx.all import crop  # type: ignore
+
+    return {
+        "AudioFileClip": AudioFileClip,
+        "CompositeAudioClip": CompositeAudioClip,
+        "CompositeVideoClip": CompositeVideoClip,
+        "ImageClip": ImageClip,
+        "VideoFileClip": VideoFileClip,
+        "crop": crop,
+    }
+
+
+try:
+    _symbols = _import_from_moviepy_v1()
+except Exception:
+    _symbols = _import_from_moviepy_v2()
+
+
+AudioFileClip = _symbols["AudioFileClip"]
+CompositeAudioClip = _symbols["CompositeAudioClip"]
+CompositeVideoClip = _symbols["CompositeVideoClip"]
+ImageClip = _symbols["ImageClip"]
+VideoFileClip = _symbols["VideoFileClip"]
+crop = _symbols["crop"]
+
+
+def subclip(clip, start: float, end: float):
+    if hasattr(clip, "subclip"):
+        return clip.subclip(start, end)
+    if hasattr(clip, "subclipped"):
+        return clip.subclipped(start, end)
+    raise AttributeError("Clip does not support subclip/subclipped")
+
+
+def set_start(clip, t: float):
+    if hasattr(clip, "set_start"):
+        return clip.set_start(t)
+    if hasattr(clip, "with_start"):
+        return clip.with_start(t)
+    raise AttributeError("Clip does not support set_start/with_start")
+
+
+def set_duration(clip, t: float):
+    if hasattr(clip, "set_duration"):
+        return clip.set_duration(t)
+    if hasattr(clip, "with_duration"):
+        return clip.with_duration(t)
+    raise AttributeError("Clip does not support set_duration/with_duration")
+
+
+def set_position(clip, pos):
+    if hasattr(clip, "set_position"):
+        return clip.set_position(pos)
+    if hasattr(clip, "with_position"):
+        return clip.with_position(pos)
+    raise AttributeError("Clip does not support set_position/with_position")
+
+
+def resize(clip, *, newsize=None, height: int | None = None):
+    if hasattr(clip, "resize"):
+        return clip.resize(newsize=newsize, height=height)
+    if hasattr(clip, "resized"):
+        if height is not None:
+            return clip.resized(height=height)
+        if newsize is not None:
+            # MoviePy v2 uses new_size keyword
+            return clip.resized(new_size=newsize)
+        return clip
+    raise AttributeError("Clip does not support resize/resized")
+
+
+def set_audio(video_clip, audio_clip):
+    if hasattr(video_clip, "set_audio"):
+        return video_clip.set_audio(audio_clip)
+    if hasattr(video_clip, "with_audio"):
+        return video_clip.with_audio(audio_clip)
+    raise AttributeError("Video clip does not support set_audio/with_audio")
+
+
+----- File: E:\Youtube automation\ytautomation\core\paths.py -----
+from __future__ import annotations
+
+from pathlib import Path
+
+
+def job_dir(runs_dir: Path, job_id: str) -> Path:
+    return runs_dir / job_id
+
+
+def stage_dir(runs_dir: Path, job_id: str, stage: str) -> Path:
+    return job_dir(runs_dir, job_id) / stage
+
+
+def ensure_dirs(runs_dir: Path, job_id: str) -> dict[str, Path]:
+    dirs = {
+        "input": stage_dir(runs_dir, job_id, "00_input"),
+        "script": stage_dir(runs_dir, job_id, "01_script"),
+        "audio": stage_dir(runs_dir, job_id, "02_audio"),
+        "timeline": stage_dir(runs_dir, job_id, "03_timeline"),
+        "render": stage_dir(runs_dir, job_id, "04_render"),
+    }
+    for p in dirs.values():
+        p.mkdir(parents=True, exist_ok=True)
+    return dirs
+
+
+----- File: E:\Youtube automation\ytautomation\core\settings.py -----
+from __future__ import annotations
+
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    # Azure OpenAI
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    azure_openai_deployment: str | None = None
+    azure_openai_api_version: str = "2024-02-15-preview"
+
+    # Cartesia
+    cartesia_api_key: str | None = None
+    cartesia_version: str = "2024-06-10"
+    cartesia_model_id: str = "sonic-3"
+    cartesia_language: str = "hi"
+    cartesia_speed: float = 0.95
+    cartesia_emotion: str = "neutral"
+
+    # Common paths (default relative to repository root)
+    repo_root: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2])
+    assets_gameplay_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "youtube-videos-download" / "videos")
+    assets_avatars_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "avatars")
+    avatar_map_path: Path | None = None
+    runs_dir: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "runs")
+    prompt_template_path: Path = Field(default_factory=lambda: Path(__file__).resolve().parents[2] / "ytautomation" / "prompts" / "script_prompt.txt")
+
+    # Rendering
+    output_width: int = 1080
+    output_height: int = 1920
+    fps: int = 24
+
+    # Simple voice mapping (defaults for your current two voices)
+    voice_id_aniket: str = "7dbf4710-0998-4b2c-bacb-9cb25cc68572"
+    voice_id_malay: str = "85f9e4e0-8ae6-4c81-a88d-dbd80bbff29a"
+
+
+def get_settings() -> Settings:
+    root = Path(__file__).resolve().parents[2]
+    env_path = root / ".env"
+    if env_path.exists():
+        return Settings(_env_file=str(env_path), _env_file_encoding="utf-8")
+    return Settings()
+
+
+----- File: E:\Youtube automation\ytautomation\core\__init__.py -----
+
+
+----- File: E:\Youtube automation\ytautomation\modules\csv_ingest.py -----
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pandas as pd
+
+from ytautomation.core.models import JobSpec
+
+
+def slugify(value: str) -> str:
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9]+", "-", value)
+    value = re.sub(r"-+", "-", value).strip("-")
+    return value or "topic"
+
+
+def load_jobs_from_csv(csv_path: Path) -> list[JobSpec]:
+    df = pd.read_csv(csv_path)
+
+    required = {"topic", "character_a", "character_b"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"CSV missing columns: {sorted(missing)}")
+
+    jobs: list[JobSpec] = []
+    for idx, row in df.iterrows():
+        topic = str(row["topic"]).strip()
+        a = str(row["character_a"]).strip()
+        b = str(row["character_b"]).strip()
+        if not topic or not a or not b:
+            raise ValueError(f"Empty fields at row {idx}")
+
+        raw_id = None
+        if "id" in df.columns and str(row["id"]).strip() not in {"", "nan", "None"}:
+            raw_id = str(row["id"]).strip()
+
+        job_id = raw_id or f"{slugify(topic)}-{idx+1}"
+        voice_id_a = None
+        voice_id_b = None
+        if "voice_id_a" in df.columns:
+            voice_id_a = str(row["voice_id_a"]).strip()
+            if voice_id_a.lower() in {"", "nan", "none"}:
+                voice_id_a = None
+        if "voice_id_b" in df.columns:
+            voice_id_b = str(row["voice_id_b"]).strip()
+            if voice_id_b.lower() in {"", "nan", "none"}:
+                voice_id_b = None
+
+        jobs.append(
+            JobSpec(
+                job_id=job_id,
+                topic=topic,
+                character_a=a,
+                character_b=b,
+                voice_id_a=voice_id_a,
+                voice_id_b=voice_id_b,
+            )
+        )
+
+    return jobs
+
+
+----- File: E:\Youtube automation\ytautomation\modules\gameplay_selector.py -----
+from __future__ import annotations
+
+import random
+from pathlib import Path
+
+from ytautomation.core.moviepy_compat import VideoFileClip
+
+from ytautomation.core.errors import ValidationError
+
+
+def choose_gameplay_clip(gameplay_dir: Path, total_duration_sec: float, seed: int | None = None) -> tuple[Path, float]:
+    if seed is not None:
+        random.seed(seed)
+
+    candidates = [p for p in gameplay_dir.iterdir() if p.suffix.lower() in {".mp4", ".mov", ".mkv"}]
+    if not candidates:
+        raise ValidationError(f"No gameplay videos found in {gameplay_dir}")
+
+    random.shuffle(candidates)
+
+    for path in candidates:
+        clip = VideoFileClip(str(path))
+        try:
+            if clip.duration is None:
+                continue
+            if clip.duration >= total_duration_sec + 0.25:
+                max_start = float(clip.duration - total_duration_sec)
+                start = random.uniform(0, max_start)
+                return path, start
+        finally:
+            clip.close()
+
+    raise ValidationError(
+        f"No gameplay file long enough for required duration={total_duration_sec:.2f}s in {gameplay_dir}"
+    )
+
+
+----- File: E:\Youtube automation\ytautomation\modules\llm_script_generator.py -----
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+
+from openai import AzureOpenAI
+
+from ytautomation.core.errors import ConfigError, ValidationError
+from ytautomation.core.io import write_json, write_text
+from ytautomation.core.models import DialogueLine, JobSpec, ScriptArtifact
+from ytautomation.core.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_json_array(text: str) -> str:
+    """Best-effort extraction of a top-level JSON array from a model response."""
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        raise ValidationError("LLM output did not contain a JSON array")
+    return text[start : end + 1]
+
+
+def _validate_lines(lines: list[DialogueLine], job: JobSpec) -> None:
+    allowed = {job.character_a, job.character_b}
+    for i, line in enumerate(lines):
+        if line.speaker not in allowed:
+            raise ValidationError(f"Invalid speaker at line {i}: {line.speaker}")
+        if not line.text.strip():
+            raise ValidationError(f"Empty text at line {i}")
+
+    # Strict alternation starting with character_a
+    expected = job.character_a
+    for i, line in enumerate(lines):
+        if line.speaker != expected:
+            raise ValidationError(
+                f"Speakers must alternate starting with {job.character_a}; line {i} was {line.speaker}"
+            )
+        expected = job.character_b if expected == job.character_a else job.character_a
+
+
+def generate_script(job: JobSpec, settings: Settings, output_dir: Path, force: bool = False) -> ScriptArtifact:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = output_dir / "raw.txt"
+    parsed_path = output_dir / "script.json"
+
+    if parsed_path.exists() and raw_path.exists() and not force:
+        # Load existing parsed script
+        data = json.loads(parsed_path.read_text(encoding="utf-8"))
+        lines = [DialogueLine.model_validate(x) for x in data]
+        _validate_lines(lines, job)
+        return ScriptArtifact(
+            job_id=job.job_id,
+            prompt_used="(cached)",
+            raw_response_text_path=raw_path,
+            parsed_script_path=parsed_path,
+            lines=lines,
+        )
+
+    if not settings.azure_openai_endpoint or not settings.azure_openai_api_key or not settings.azure_openai_deployment:
+        raise ConfigError("Azure OpenAI env vars missing: AZURE_OPENAI_ENDPOINT/API_KEY/DEPLOYMENT")
+
+    prompt_template = settings.prompt_template_path.read_text(encoding="utf-8")
+    prompt = prompt_template.format(
+        topic=job.topic,
+        character_a=job.character_a,
+        character_b=job.character_b,
+    )
+
+    client = AzureOpenAI(
+        azure_endpoint=settings.azure_openai_endpoint,
+        api_key=settings.azure_openai_api_key,
+        api_version=settings.azure_openai_api_version,
+    )
+
+    logger.info("Generating script for job_id=%s", job.job_id)
+    resp = client.chat.completions.create(
+        model=settings.azure_openai_deployment,
+        messages=[
+            {"role": "system", "content": "Return only valid JSON."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.7,
+    )
+
+    text = (resp.choices[0].message.content or "").strip()
+    write_text(raw_path, text)
+
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        payload = json.loads(_extract_json_array(text))
+
+    if not isinstance(payload, list):
+        raise ValidationError("LLM output JSON must be a list")
+
+    lines = [DialogueLine.model_validate(x) for x in payload]
+    _validate_lines(lines, job)
+
+    write_json(parsed_path, [l.model_dump() for l in lines])
+
+    return ScriptArtifact(
+        job_id=job.job_id,
+        prompt_used=prompt,
+        raw_response_text_path=raw_path,
+        parsed_script_path=parsed_path,
+        lines=lines,
+    )
+
+
+----- File: E:\Youtube automation\ytautomation\modules\timeline_builder.py -----
+from __future__ import annotations
+
+from pathlib import Path
+
+import json
+
+from ytautomation.core.errors import ValidationError
+from ytautomation.core.io import write_model
+from ytautomation.core.models import AudioManifest, JobSpec, TimelineArtifact, TimelineSegment
+from ytautomation.core.settings import Settings
+
+
+def _resolve_avatar(avatars_dir: Path, speaker: str, avatar_map: dict[str, str] | None) -> Path:
+    if avatar_map and speaker in avatar_map:
+        mapped = Path(avatar_map[speaker])
+        candidate = mapped if mapped.is_absolute() else (avatars_dir / mapped)
+        if candidate.exists():
+            return candidate
+
+    direct = avatars_dir / f"{speaker}.png"
+    if direct.exists():
+        return direct
+
+    # Try any extension: speaker.*
+    matches = sorted([p for p in avatars_dir.glob(f"{speaker}.*") if p.is_file()])
+    if matches:
+        return matches[0]
+
+    raise ValidationError(
+        f"Avatar not found for speaker '{speaker}'. Expected {direct} or any file named '{speaker}.*' in {avatars_dir}"
+    )
+
+
+def build_timeline(job: JobSpec, audio_manifest: AudioManifest, settings: Settings, output_dir: Path) -> TimelineArtifact:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timeline_path = output_dir / "timeline.json"
+
+    segments: list[TimelineSegment] = []
+    cursor = 0.0
+
+    avatar_map: dict[str, str] | None = None
+    if settings.avatar_map_path and settings.avatar_map_path.exists():
+        avatar_map = json.loads(settings.avatar_map_path.read_text(encoding="utf-8"))
+
+    for clip in audio_manifest.clips:
+        avatar = _resolve_avatar(settings.assets_avatars_dir, clip.speaker, avatar_map)
+        segments.append(
+            TimelineSegment(
+                index=clip.index,
+                speaker=clip.speaker,
+                start_sec=cursor,
+                duration_sec=clip.duration_sec,
+                audio_path=clip.wav_path,
+                avatar_path=avatar,
+            )
+        )
+        cursor += clip.duration_sec
+
+    artifact = TimelineArtifact(job_id=job.job_id, segments=segments, total_duration_sec=cursor)
+    write_model(timeline_path, artifact)
+    return artifact
+
+
+----- File: E:\Youtube automation\ytautomation\modules\tts_cartesia.py -----
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+import requests
+
+from ytautomation.core.moviepy_compat import AudioFileClip
+
+from ytautomation.core.errors import ConfigError, ValidationError
+from ytautomation.core.io import write_model, write_text
+from ytautomation.core.models import AudioClipArtifact, AudioManifest, JobSpec, ScriptArtifact
+from ytautomation.core.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+def _voice_id_for_speaker(speaker: str, settings: Settings, job: JobSpec) -> str:
+    # Prefer per-job mapping (from CSV) if provided.
+    if speaker == job.character_a and job.voice_id_a:
+        return job.voice_id_a
+    if speaker == job.character_b and job.voice_id_b:
+        return job.voice_id_b
+
+    # Fallback defaults (works out of the box for aniket/malay jobs).
+    mapping = {
+        job.character_a: settings.voice_id_aniket,
+        job.character_b: settings.voice_id_malay,
+    }
+    voice_id = mapping.get(speaker)
+    if not voice_id:
+        raise ValidationError(f"No voice mapping for speaker: {speaker}")
+    return voice_id
+
+
+def generate_audio(job: JobSpec, script: ScriptArtifact, settings: Settings, output_dir: Path, force: bool = False) -> AudioManifest:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_dir / "audio_manifest.json"
+
+    if manifest_path.exists() and not force:
+        return AudioManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+
+    if not settings.cartesia_api_key:
+        raise ConfigError("Missing CARTESIA_API_KEY")
+
+    api_url = "https://api.cartesia.ai/tts/bytes"
+
+    clips: list[AudioClipArtifact] = []
+
+    for idx, line in enumerate(script.lines):
+        speaker = line.speaker
+        voice_id = _voice_id_for_speaker(speaker, settings, job)
+        wav_path = output_dir / f"{idx:02d}_{speaker}.wav"
+
+        if wav_path.exists() and not force:
+            a = AudioFileClip(str(wav_path))
+            duration = float(a.duration)
+            a.close()
+            clips.append(AudioClipArtifact(index=idx, speaker=speaker, wav_path=wav_path, duration_sec=duration))
+            continue
+
+        payload = {
+            "model_id": settings.cartesia_model_id,
+            "transcript": line.text,
+            "voice": {"mode": "id", "id": voice_id},
+            "output_format": {
+                "container": "wav",
+                "encoding": "pcm_f32le",
+                "sample_rate": 44100,
+            },
+            "language": settings.cartesia_language,
+            "generation_config": {
+                "volume": 1,
+                "speed": settings.cartesia_speed,
+                "emotion": settings.cartesia_emotion,
+            },
+        }
+
+        headers = {
+            "Cartesia-Version": settings.cartesia_version,
+            "Authorization": f"Bearer {settings.cartesia_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        logger.info("TTS line=%s speaker=%s", idx, speaker)
+        resp = requests.post(api_url, json=payload, headers=headers, timeout=60)
+        if resp.status_code != 200:
+            err_path = output_dir / f"{idx:02d}_{speaker}.error.txt"
+            write_text(err_path, f"{resp.status_code}\n{resp.text}")
+            raise ValidationError(f"Cartesia TTS failed ({resp.status_code}) for line {idx}")
+
+        wav_path.write_bytes(resp.content)
+
+        a = AudioFileClip(str(wav_path))
+        duration = float(a.duration)
+        a.close()
+
+        clips.append(AudioClipArtifact(index=idx, speaker=speaker, wav_path=wav_path, duration_sec=duration))
+
+    manifest = AudioManifest(job_id=job.job_id, clips=clips)
+    write_model(manifest_path, manifest)
+    return manifest
+
+
+----- File: E:\Youtube automation\ytautomation\modules\video_renderer.py -----
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+from ytautomation.core.moviepy_compat import (
+    AudioFileClip,
+    CompositeAudioClip,
+    CompositeVideoClip,
+    ImageClip,
+    VideoFileClip,
+    crop,
+    resize,
+    set_audio,
+    set_duration,
+    set_position,
+    set_start,
+    subclip,
+)
+
+from ytautomation.core.errors import ValidationError
+from ytautomation.core.io import write_model
+from ytautomation.core.models import RenderPlan, TimelineArtifact
+from ytautomation.core.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+def _center_crop_to_aspect(clip: VideoFileClip, target_w: int, target_h: int) -> VideoFileClip:
+    target_aspect = target_w / target_h
+    current_aspect = clip.w / clip.h
+
+    if abs(current_aspect - target_aspect) < 1e-3:
+        return clip
+
+    if current_aspect > target_aspect:
+        # too wide: crop width
+        new_w = int(clip.h * target_aspect)
+        x1 = int((clip.w - new_w) / 2)
+        x2 = x1 + new_w
+        return crop(clip, x1=x1, x2=x2)
+
+    # too tall: crop height
+    new_h = int(clip.w / target_aspect)
+    y1 = int((clip.h - new_h) / 2)
+    y2 = y1 + new_h
+    return crop(clip, y1=y1, y2=y2)
+
+
+def render_video(
+    timeline: TimelineArtifact,
+    gameplay_path: Path,
+    gameplay_start_sec: float,
+    output_path: Path,
+    settings: Settings,
+) -> RenderPlan:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    total = timeline.total_duration_sec
+
+    base = VideoFileClip(str(gameplay_path))
+    try:
+        if base.duration < gameplay_start_sec + total:
+            raise ValidationError("Gameplay clip is shorter than required after start offset")
+
+        clip = subclip(base, gameplay_start_sec, gameplay_start_sec + total)
+        clip = _center_crop_to_aspect(clip, settings.output_width, settings.output_height)
+        clip = resize(clip, newsize=(settings.output_width, settings.output_height))
+
+        overlay_clips = []
+        audio_clips = []
+
+        if not timeline.segments:
+            raise ValidationError("Timeline has no segments")
+
+        left_speaker = timeline.segments[0].speaker
+
+        for seg in timeline.segments:
+            if not seg.avatar_path.exists():
+                raise ValidationError(f"Missing avatar image: {seg.avatar_path}")
+
+            pos = ("left", "bottom") if seg.speaker == left_speaker else ("right", "bottom")
+
+            img = (
+                ImageClip(str(seg.avatar_path))
+            )
+            img = set_start(img, seg.start_sec)
+            img = set_duration(img, seg.duration_sec)
+            img = set_position(img, pos)
+            img = resize(img, height=int(settings.output_height * 0.25))
+
+            overlay_clips.append(img)
+
+            a = AudioFileClip(str(seg.audio_path))
+            a = set_start(a, seg.start_sec)
+            audio_clips.append(a)
+
+        final = CompositeVideoClip([clip] + overlay_clips)
+        final = set_audio(final, CompositeAudioClip(audio_clips))
+
+        logger.info("Writing video: %s", output_path)
+        final.write_videofile(str(output_path), fps=settings.fps, audio_codec="aac")
+
+        for a in audio_clips:
+            a.close()
+        for i in overlay_clips:
+            i.close()
+        final.close()
+        clip.close()
+    finally:
+        base.close()
+
+    plan = RenderPlan(
+        job_id=timeline.job_id,
+        gameplay_path=gameplay_path,
+        gameplay_start_sec=gameplay_start_sec,
+        total_duration_sec=total,
+        output_path=output_path,
+    )
+
+    write_model(output_path.parent / "render_plan.json", plan)
+    return plan
+
+
+----- File: E:\Youtube automation\ytautomation\modules\__init__.py -----
+
+
+----- File: E:\Youtube automation\ytautomation\prompts\script_prompt.txt -----
+You are writing a short, engaging, conversational dialogue in Hinglish (Hindi in Latin script, casual).
+
+Topic: {topic}
+Characters: {character_a} and {character_b}
+
+Rules:
+- Output MUST be valid JSON only. No markdown, no backticks, no extra text.
+- Output format: a JSON array of objects: [{{"speaker": "...", "text": "..."}}, ...]
+- speaker must be exactly one of: "{character_a}" or "{character_b}"
+- Alternate speakers line-by-line starting with {character_a}.
+- Each line should be 1-2 sentences, punchy, and natural.
+- Total length: 12 to 22 lines.
+- No emojis. No stage directions. No narrator.
+- Avoid sensitive/unsafe content.
+
+Now produce the JSON array.

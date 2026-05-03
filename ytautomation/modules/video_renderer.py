@@ -25,6 +25,9 @@ from ytautomation.core.settings import Settings
 
 logger = logging.getLogger(__name__)
 
+AVATAR_HEIGHT_RATIO = 0.325
+AVATAR_BOTTOM_OFFSET_RATIO = 0.05
+
 
 def _center_crop_to_aspect(clip: VideoFileClip, target_w: int, target_h: int) -> VideoFileClip:
     target_aspect = target_w / target_h
@@ -74,20 +77,20 @@ def render_video(
             raise ValidationError("Timeline has no segments")
 
         left_speaker = timeline.segments[0].speaker
+        avatar_height = int(settings.output_height * AVATAR_HEIGHT_RATIO)
+        avatar_bottom_offset = int(settings.output_height * AVATAR_BOTTOM_OFFSET_RATIO)
 
         for seg in timeline.segments:
             if not seg.avatar_path.exists():
                 raise ValidationError(f"Missing avatar image: {seg.avatar_path}")
 
-            pos = ("left", "bottom") if seg.speaker == left_speaker else ("right", "bottom")
-
-            img = (
-                ImageClip(str(seg.avatar_path))
-            )
+            img = ImageClip(str(seg.avatar_path))
+            img = resize(img, height=avatar_height)
+            y = settings.output_height - img.h - avatar_bottom_offset
+            pos = (0, y) if seg.speaker == left_speaker else (settings.output_width - img.w, y)
             img = set_start(img, seg.start_sec)
             img = set_duration(img, seg.duration_sec)
             img = set_position(img, pos)
-            img = resize(img, height=int(settings.output_height * 0.25))
 
             overlay_clips.append(img)
 

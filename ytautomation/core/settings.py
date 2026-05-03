@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # Simple voice mapping (defaults for your current two voices)
     voice_id_aniket: str = "7dbf4710-0998-4b2c-bacb-9cb25cc68572"
     voice_id_malay: str = "85f9e4e0-8ae6-4c81-a88d-dbd80bbff29a"
-    voice_id_shubham: str = "b1e904fd-eaf5-4bae-a7f9-d141b7f06987"
+    voice_id_shubham: str = "a285fa9c-75ad-4f4d-a1a4-0b83eea4a050"
     voice_ids_by_speaker: dict[str, str] = Field(default_factory=dict)
 
     def model_post_init(self, __context: Any) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 import requests
@@ -15,21 +16,19 @@ from ytautomation.core.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-def _voice_id_for_speaker(speaker: str, settings: Settings, job: JobSpec) -> str:
-    # Prefer per-job mapping (from CSV) if provided.
-    if speaker == job.character_a and job.voice_id_a:
-        return job.voice_id_a
-    if speaker == job.character_b and job.voice_id_b:
-        return job.voice_id_b
+def _voice_setting_name(speaker: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "_", speaker.strip().lower()).strip("_")
+    return f"voice_id_{normalized}"
 
-    # Fallback defaults (works out of the box for aniket/malay jobs).
-    mapping = {
-        job.character_a: settings.voice_id_aniket,
-        job.character_b: settings.voice_id_malay,
-    }
-    voice_id = mapping.get(speaker)
-    if not voice_id:
+
+def _voice_id_for_speaker(speaker: str, settings: Settings, job: JobSpec) -> str:
+    if speaker not in {job.character_a, job.character_b}:
         raise ValidationError(f"No voice mapping for speaker: {speaker}")
+
+    setting_name = _voice_setting_name(speaker)
+    voice_id = settings.voice_ids_by_speaker.get(setting_name.removeprefix("voice_id_"))
+    if not voice_id:
+        raise ValidationError(f"No voice mapping for speaker: {speaker}. Expected setting {setting_name.upper()}")
     return voice_id
 
 

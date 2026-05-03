@@ -25,8 +25,10 @@ from ytautomation.core.settings import Settings
 
 logger = logging.getLogger(__name__)
 
-AVATAR_HEIGHT_RATIO = 0.325
-AVATAR_BOTTOM_OFFSET_RATIO = 0.05
+ACTIVE_AVATAR_HEIGHT_RATIO = 0.325
+INACTIVE_SCALE = 0.6
+TRANSITION_SEC = 0.35
+AVATAR_BOTTOM_MARGIN_RATIO = 0.05
 
 
 def _center_crop_to_aspect(clip: VideoFileClip, target_w: int, target_h: int) -> VideoFileClip:
@@ -37,17 +39,91 @@ def _center_crop_to_aspect(clip: VideoFileClip, target_w: int, target_h: int) ->
         return clip
 
     if current_aspect > target_aspect:
-        # too wide: crop width
         new_w = int(clip.h * target_aspect)
         x1 = int((clip.w - new_w) / 2)
         x2 = x1 + new_w
         return crop(clip, x1=x1, x2=x2)
 
-    # too tall: crop height
     new_h = int(clip.w / target_aspect)
     y1 = int((clip.h - new_h) / 2)
     y2 = y1 + new_h
     return crop(clip, y1=y1, y2=y2)
+
+
+def _smoothstep(x: float) -> float:
+    x = max(0.0, min(1.0, x))
+    return x * x * (3.0 - 2.0 * x)
+
+
+def _speaker_order(timeline: TimelineArtifact) -> list[str]:
+    speakers: list[str] = []
+    for segment in timeline.segments:
+        if segment.speaker not in speakers:
+            speakers.append(segment.speaker)
+    return speakers
+
+
+def _avatar_paths_by_speaker(timeline: TimelineArtifact) -> dict[str, Path]:
+    avatar_paths: dict[str, Path] = {}
+    for segment in timeline.segments:
+        avatar_paths.setdefault(segment.speaker, segment.avatar_path)
+    return avatar_paths
+
+
+def _active_segment_index(timeline: TimelineArtifact, t: float) -> int:
+    if t <= timeline.segments[0].start_sec:
+        return 0
+
+    for index, segment in enumerate(timeline.segments):
+        start = segment.start_sec
+        end = segment.start_sec + segment.duration_sec
+        if start <= t < end:
+            return index
+
+    return len(timeline.segments) - 1
+
+
+def _make_scale_function(timeline: TimelineArtifact):
+    def get_scale(t: float, speaker_name: str) -> float:
+        index = _active_segment_index(timeline, t)
+        segment = timeline.segments[index]
+        previous = timeline.segments[index - 1] if index > 0 else None
+
+        if previous and previous.speaker != segment.speaker:
+            elapsed = t - segment.start_sec
+            transition = min(TRANSITION_SEC, max(0.05, segment.duration_sec * 0.5))
+
+            if 0.0 <= elapsed < transition:
+                progress = _smoothstep(elapsed / transition)
+                if speaker_name == segment.speaker:
+                    return INACTIVE_SCALE + ((1.0 - INACTIVE_SCALE) * progress)
+                if speaker_name == previous.speaker:
+                    return 1.0 - ((1.0 - INACTIVE_SCALE) * progress)
+
+        return 1.0 if speaker_name == segment.speaker else INACTIVE_SCALE
+
+    return get_scale
+
+
+def _avatar_position(
+    side: str,
+    base_w: int,
+    base_h: int,
+    output_w: int,
+    output_h: int,
+    get_scale,
+    speaker: str,
+):
+    def position(t: float) -> tuple[int, int]:
+        scale = get_scale(t, speaker)
+        scaled_w = int(base_w * scale)
+        scaled_h = int(base_h * scale)
+        bottom_margin = int(output_h * AVATAR_BOTTOM_MARGIN_RATIO)
+        x = 0 if side == "left" else output_w - scaled_w
+        y = output_h - scaled_h - bottom_margin
+        return x, y
+
+    return position
 
 
 def render_video(
@@ -70,44 +146,58 @@ def render_video(
         clip = _center_crop_to_aspect(clip, settings.output_width, settings.output_height)
         clip = resize(clip, newsize=(settings.output_width, settings.output_height))
 
-        overlay_clips = []
-        audio_clips = []
-
         if not timeline.segments:
             raise ValidationError("Timeline has no segments")
 
-        left_speaker = timeline.segments[0].speaker
-        avatar_height = int(settings.output_height * AVATAR_HEIGHT_RATIO)
-        avatar_bottom_offset = int(settings.output_height * AVATAR_BOTTOM_OFFSET_RATIO)
+        speakers = _speaker_order(timeline)
+        avatar_paths = _avatar_paths_by_speaker(timeline)
+        get_scale = _make_scale_function(timeline)
 
-        for seg in timeline.segments:
-            if not seg.avatar_path.exists():
-                raise ValidationError(f"Missing avatar image: {seg.avatar_path}")
+        avatar_clips = []
+        avatar_height = int(settings.output_height * ACTIVE_AVATAR_HEIGHT_RATIO)
 
-            img = ImageClip(str(seg.avatar_path))
-            img = resize(img, height=avatar_height)
-            y = settings.output_height - img.h - avatar_bottom_offset
-            pos = (0, y) if seg.speaker == left_speaker else (settings.output_width - img.w, y)
-            img = set_start(img, seg.start_sec)
-            img = set_duration(img, seg.duration_sec)
-            img = set_position(img, pos)
+        for index, speaker in enumerate(speakers[:2]):
+            avatar_path = avatar_paths[speaker]
+            if not avatar_path.exists():
+                raise ValidationError(f"Missing avatar image: {avatar_path}")
 
-            overlay_clips.append(img)
+            side = "left" if index == 0 else "right"
+            avatar = ImageClip(str(avatar_path))
+            avatar = resize(avatar, height=avatar_height)
+            base_w = avatar.w
+            base_h = avatar.h
+            avatar = resize(avatar, newsize=lambda t, speaker=speaker: get_scale(t, speaker))
+            avatar = set_duration(avatar, total)
+            avatar = set_position(
+                avatar,
+                _avatar_position(
+                    side=side,
+                    base_w=base_w,
+                    base_h=base_h,
+                    output_w=settings.output_width,
+                    output_h=settings.output_height,
+                    get_scale=get_scale,
+                    speaker=speaker,
+                ),
+            )
+            avatar_clips.append(avatar)
 
-            a = AudioFileClip(str(seg.audio_path))
-            a = set_start(a, seg.start_sec)
-            audio_clips.append(a)
+        audio_clips = []
+        for segment in timeline.segments:
+            audio = AudioFileClip(str(segment.audio_path))
+            audio = set_start(audio, segment.start_sec)
+            audio_clips.append(audio)
 
-        final = CompositeVideoClip([clip] + overlay_clips)
+        final = CompositeVideoClip([clip] + avatar_clips)
         final = set_audio(final, CompositeAudioClip(audio_clips))
 
         logger.info("Writing video: %s", output_path)
         final.write_videofile(str(output_path), fps=settings.fps, audio_codec="aac")
 
-        for a in audio_clips:
-            a.close()
-        for i in overlay_clips:
-            i.close()
+        for audio in audio_clips:
+            audio.close()
+        for avatar in avatar_clips:
+            avatar.close()
         final.close()
         clip.close()
     finally:

@@ -10,16 +10,22 @@ from ytautomation.core.models import AudioManifest, JobSpec, TimelineArtifact, T
 from ytautomation.core.settings import Settings
 
 
-def _resolve_avatar(avatars_dir: Path, speaker: str, avatar_map: dict[str, str] | None) -> Path:
+def _resolve_avatar(avatars_dir: Path, speaker: str, avatar_map: dict[str, str] | None, prefer_inverted: bool) -> Path:
     if avatar_map and speaker in avatar_map:
         mapped = Path(avatar_map[speaker])
         candidate = mapped if mapped.is_absolute() else (avatars_dir / mapped)
         if candidate.exists():
             return candidate
 
-    direct = avatars_dir / f"{speaker}.png"
+    preferred_name = f"{speaker}-inverted.png" if prefer_inverted else f"{speaker}.png"
+    direct = avatars_dir / preferred_name
     if direct.exists():
         return direct
+
+    fallback_name = f"{speaker}.png" if prefer_inverted else f"{speaker}-inverted.png"
+    fallback = avatars_dir / fallback_name
+    if fallback.exists():
+        return fallback
 
     # Try any extension: speaker.*
     matches = sorted([p for p in avatars_dir.glob(f"{speaker}.*") if p.is_file()])
@@ -43,7 +49,12 @@ def build_timeline(job: JobSpec, audio_manifest: AudioManifest, settings: Settin
         avatar_map = json.loads(settings.avatar_map_path.read_text(encoding="utf-8"))
 
     for clip in audio_manifest.clips:
-        avatar = _resolve_avatar(settings.assets_avatars_dir, clip.speaker, avatar_map)
+        avatar = _resolve_avatar(
+            settings.assets_avatars_dir,
+            clip.speaker,
+            avatar_map,
+            prefer_inverted=clip.speaker == job.character_a,
+        )
         segments.append(
             TimelineSegment(
                 index=clip.index,

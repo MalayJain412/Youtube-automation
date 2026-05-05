@@ -99,12 +99,50 @@ def set_duration(clip, t: float):
     raise AttributeError("Clip does not support set_duration/with_duration")
 
 
-def set_position(clip, pos):
+def set_position(clip, pos, relative: bool = False):
     if hasattr(clip, "set_position"):
-        return clip.set_position(pos)
+        return clip.set_position(pos, relative=relative)
     if hasattr(clip, "with_position"):
-        return clip.with_position(pos)
+        return clip.with_position(pos, relative=relative)
     raise AttributeError("Clip does not support set_position/with_position")
+
+
+def set_opacity(clip, opacity: float):
+    if hasattr(clip, "set_opacity"):
+        return clip.set_opacity(opacity)
+    if hasattr(clip, "with_opacity"):
+        return clip.with_opacity(opacity)
+    raise AttributeError("Clip does not support set_opacity/with_opacity")
+
+
+def add_margin(clip, **kwargs):
+    if hasattr(clip, "margin"):
+        return clip.margin(**kwargs)
+    if hasattr(clip, "with_margin"):
+        return clip.with_margin(**kwargs)
+
+    try:
+        from moviepy.video.fx import Margin as _Margin  # type: ignore
+
+        return _Margin(**kwargs).apply(clip)
+    except Exception:
+        pass
+
+    try:
+        from moviepy.video.fx.all import margin as _margin  # type: ignore
+
+        return _margin(clip, **kwargs)
+    except Exception:
+        pass
+
+    try:
+        from moviepy.video.fx.margin import margin as _margin  # type: ignore
+
+        return _margin(clip, **kwargs)
+    except Exception:
+        pass
+
+    return clip
 
 
 def resize(clip, *, newsize=None, height: int | None = None):

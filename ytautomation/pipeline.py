@@ -138,8 +138,10 @@ def run_job(job_id: str, steps: list[str] | None = None, force: bool = False, se
             else:
                 if timeline is None:
                     timeline = _load_timeline(dirs)
+                if script is None:
+                    script = generate_script(job, settings, dirs["script"], force=False)
                 gameplay_path, start_sec = choose_gameplay_clip(settings.assets_gameplay_dir, timeline.total_duration_sec)
-                render_video(timeline, gameplay_path, start_sec, output_path, settings)
+                render_video(timeline, script, gameplay_path, start_sec, output_path, settings)
 
         # Sanity check: if a step was requested, its artifact should exist.
         if "script" in steps and not (dirs["script"] / "script.json").exists():

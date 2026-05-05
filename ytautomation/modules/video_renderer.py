@@ -20,8 +20,9 @@ from ytautomation.core.moviepy_compat import (
 
 from ytautomation.core.errors import ValidationError
 from ytautomation.core.io import write_model
-from ytautomation.core.models import RenderPlan, TimelineArtifact
+from ytautomation.core.models import RenderPlan, ScriptArtifact, TimelineArtifact
 from ytautomation.core.settings import Settings
+from ytautomation.modules.subtitle_renderer import build_subtitle_clips
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,7 @@ def _avatar_position(
 
 def render_video(
     timeline: TimelineArtifact,
+    script: ScriptArtifact,
     gameplay_path: Path,
     gameplay_start_sec: float,
     output_path: Path,
@@ -182,13 +184,15 @@ def render_video(
             )
             avatar_clips.append(avatar)
 
+        subtitle_clips = build_subtitle_clips(timeline, script, settings.output_width, settings.output_height)
+
         audio_clips = []
         for segment in timeline.segments:
             audio = AudioFileClip(str(segment.audio_path))
             audio = set_start(audio, segment.start_sec)
             audio_clips.append(audio)
 
-        final = CompositeVideoClip([clip] + avatar_clips)
+        final = CompositeVideoClip([clip] + avatar_clips + subtitle_clips)
         final = set_audio(final, CompositeAudioClip(audio_clips))
 
         logger.info("Writing video: %s", output_path)
@@ -198,6 +202,8 @@ def render_video(
             audio.close()
         for avatar in avatar_clips:
             avatar.close()
+        for subtitle in subtitle_clips:
+            subtitle.close()
         final.close()
         clip.close()
     finally:

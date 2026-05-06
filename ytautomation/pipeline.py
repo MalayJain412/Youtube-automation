@@ -11,7 +11,7 @@ from ytautomation.core.errors import ArtifactMissingError
 from ytautomation.core.io import read_model, write_model
 from ytautomation.core.logging import configure_logging
 from ytautomation.core.models import AudioManifest, JobSpec, JobStatus, RenderPlan, ScriptArtifact, TimelineArtifact
-from ytautomation.core.paths import ensure_dirs
+from ytautomation.core.paths import ensure_dirs, safe_filename
 from ytautomation.core.settings import Settings, get_settings
 from ytautomation.modules.csv_ingest import load_jobs_from_csv
 from ytautomation.modules.gameplay_selector import choose_gameplay_clip
@@ -89,6 +89,10 @@ def _load_timeline(dirs: dict[str, Path]) -> TimelineArtifact:
     return read_model(path, TimelineArtifact)
 
 
+def _render_output_path(dirs: dict[str, Path], job: JobSpec) -> Path:
+    return dirs["render"] / f"{safe_filename(job.topic, fallback=job.job_id)}.mp4"
+
+
 def run_job(job_id: str, steps: list[str] | None = None, force: bool = False, settings: Settings | None = None) -> dict[str, str]:
     configure_logging()
     settings = settings or get_settings()
@@ -131,7 +135,7 @@ def run_job(job_id: str, steps: list[str] | None = None, force: bool = False, se
 
         if "render" in steps:
             write_status(dirs, job_id, stage="render")
-            output_path = dirs["render"] / "final.mp4"
+            output_path = _render_output_path(dirs, job)
             render_plan_path = dirs["render"] / "render_plan.json"
             if output_path.exists() and render_plan_path.exists() and not force:
                 read_model(render_plan_path, RenderPlan)
@@ -150,8 +154,8 @@ def run_job(job_id: str, steps: list[str] | None = None, force: bool = False, se
             raise ArtifactMissingError("Expected audio_manifest.json to exist after audio step")
         if "timeline" in steps and not (dirs["timeline"] / "timeline.json").exists():
             raise ArtifactMissingError("Expected timeline.json to exist after timeline step")
-        if "render" in steps and not (dirs["render"] / "final.mp4").exists():
-            raise ArtifactMissingError("Expected final.mp4 to exist after render step")
+        if "render" in steps and not _render_output_path(dirs, job).exists():
+            raise ArtifactMissingError(f"Expected {_render_output_path(dirs, job).name} to exist after render step")
 
         write_status(dirs, job_id, stage="done")
         return {
@@ -159,7 +163,8 @@ def run_job(job_id: str, steps: list[str] | None = None, force: bool = False, se
             "script": str(dirs["script"] / "script.json"),
             "audio": str(dirs["audio"] / "audio_manifest.json"),
             "timeline": str(dirs["timeline"] / "timeline.json"),
-            "video": str(dirs["render"] / "final.mp4"),
+            "video": str(_render_output_path(dirs, job)),
+            "caption_metadata": str(_render_output_path(dirs, job).with_suffix(".caption.txt")),
         }
 
     except Exception as e:

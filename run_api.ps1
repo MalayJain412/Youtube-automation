@@ -8,4 +8,4 @@ if (Test-Path "./venv/Scripts/Activate.ps1") {
   . ./venv/Scripts/Activate.ps1
 }
 
-python -m uvicorn ytautomation.api.main:app --host 127.0.0.1 --port 8000
+python -m uvicorn ytautomation.api.main:app --host 127.0.0.1 --port 8002

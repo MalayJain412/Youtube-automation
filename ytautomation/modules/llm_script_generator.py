@@ -14,13 +14,38 @@ from ytautomation.core.settings import Settings
 logger = logging.getLogger(__name__)
 
 
-def _extract_json_array(text: str) -> str:
-    """Best-effort extraction of a top-level JSON array from a model response."""
-    start = text.find("[")
-    end = text.rfind("]")
-    if start == -1 or end == -1 or end <= start:
-        raise ValidationError("LLM output did not contain a JSON array")
+def _extract_json_payload(text: str) -> str:
+    """Best-effort extraction of a top-level JSON object or array from a model response."""
+    candidates = [
+        (text.find("{"), text.rfind("}")),
+        (text.find("["), text.rfind("]")),
+    ]
+    candidates = [(start, end) for start, end in candidates if start != -1 and end != -1 and end > start]
+    if not candidates:
+        raise ValidationError("LLM output did not contain JSON")
+
+    start, end = min(candidates, key=lambda x: x[0])
     return text[start : end + 1]
+
+
+def _parse_script_payload(payload: object) -> tuple[list[DialogueLine], str]:
+    if isinstance(payload, list):
+        return [DialogueLine.model_validate(x) for x in payload], ""
+
+    if not isinstance(payload, dict):
+        raise ValidationError("LLM output JSON must be an object")
+
+    raw_lines = payload.get("conversation")
+    if raw_lines is None:
+        raw_lines = payload.get("lines")
+    if not isinstance(raw_lines, list):
+        raise ValidationError("LLM output JSON must include a conversation list")
+
+    caption_metadata = payload.get("caption_metadata")
+    if not isinstance(caption_metadata, str) or not caption_metadata.strip():
+        raise ValidationError("LLM output JSON must include a non-empty caption_metadata string")
+
+    return [DialogueLine.model_validate(x) for x in raw_lines], caption_metadata.strip()
 
 
 def _validate_lines(lines: list[DialogueLine], job: JobSpec) -> None:
@@ -49,15 +74,17 @@ def generate_script(job: JobSpec, settings: Settings, output_dir: Path, force: b
     if parsed_path.exists() and raw_path.exists() and not force:
         # Load existing parsed script
         data = json.loads(parsed_path.read_text(encoding="utf-8"))
-        lines = [DialogueLine.model_validate(x) for x in data]
+        lines, caption_metadata = _parse_script_payload(data)
         _validate_lines(lines, job)
-        return ScriptArtifact(
-            job_id=job.job_id,
-            prompt_used="(cached)",
-            raw_response_text_path=raw_path,
-            parsed_script_path=parsed_path,
-            lines=lines,
-        )
+        if caption_metadata:
+            return ScriptArtifact(
+                job_id=job.job_id,
+                prompt_used="(cached)",
+                raw_response_text_path=raw_path,
+                parsed_script_path=parsed_path,
+                caption_metadata=caption_metadata,
+                lines=lines,
+            )
 
     if not settings.azure_openai_endpoint or not settings.azure_openai_api_key or not settings.azure_openai_deployment:
         raise ConfigError("Azure OpenAI env vars missing: AZURE_OPENAI_ENDPOINT/API_KEY/DEPLOYMENT")
@@ -91,20 +118,24 @@ def generate_script(job: JobSpec, settings: Settings, output_dir: Path, force: b
     try:
         payload = json.loads(text)
     except json.JSONDecodeError:
-        payload = json.loads(_extract_json_array(text))
+        payload = json.loads(_extract_json_payload(text))
 
-    if not isinstance(payload, list):
-        raise ValidationError("LLM output JSON must be a list")
-
-    lines = [DialogueLine.model_validate(x) for x in payload]
+    lines, caption_metadata = _parse_script_payload(payload)
     _validate_lines(lines, job)
 
-    write_json(parsed_path, [l.model_dump() for l in lines])
+    write_json(
+        parsed_path,
+        {
+            "conversation": [l.model_dump() for l in lines],
+            "caption_metadata": caption_metadata,
+        },
+    )
 
     return ScriptArtifact(
         job_id=job.job_id,
         prompt_used=prompt,
         raw_response_text_path=raw_path,
         parsed_script_path=parsed_path,
+        caption_metadata=caption_metadata,
         lines=lines,
     )

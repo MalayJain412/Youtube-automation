@@ -5,12 +5,17 @@ Characters: {character_a} and {character_b}
 
 Rules:
 - Output MUST be valid JSON only. No markdown, no backticks, no extra text.
-- Output format: a JSON array of objects: [{{"speaker": "...", "text": "..."}}, ...]
+- Output format: {{"conversation": [{{"speaker": "...", "text": "..."}}, ...], "caption_metadata": "..."}}
 - speaker must be exactly one of: "{character_a}" or "{character_b}"
 - Alternate speakers line-by-line starting with {character_a}.
 - Each line should be 1-2 sentences, punchy, and natural.
 - Total length: 10 to 12 lines.
+- For technical terms like UV ,PM2, NPM, etc., that needs to be pronouned word by word should provided in capital letters in the script.
+- caption_metadata must be one ready-to-paste YouTube Shorts caption string.
+- caption_metadata must include a short funny, lightly sarcastic, professional caption plus 10 to 12 relevant hashtags, and some famous hashtags.
+- Always includem #perfionixai #click4ai #laplacian #covexis #ANORG in the hashtags
+- Keep caption_metadata under 280 characters.
 - No emojis. No stage directions. No narrator.
 - Avoid sensitive/unsafe content.
 
-Now produce the JSON array.
+Now produce the JSON object.

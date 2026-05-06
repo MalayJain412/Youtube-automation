@@ -3,9 +3,9 @@
 ## What it does
 
 - Reads `data/input/topics.csv` (topic + two characters)
-- Generates a JSON dialogue with Azure OpenAI
+- Generates a JSON dialogue plus a ready-to-paste caption/hashtag string with Azure OpenAI
 - Generates per-line WAV files using Cartesia
-- Builds a timeline and renders a vertical Shorts video using a random gameplay segment
+- Builds a timeline and renders a vertical Shorts video named from the topic, with caption metadata saved beside it
 
 ## Quick start
 

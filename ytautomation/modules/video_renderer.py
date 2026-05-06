@@ -19,7 +19,7 @@ from ytautomation.core.moviepy_compat import (
 )
 
 from ytautomation.core.errors import ValidationError
-from ytautomation.core.io import write_model
+from ytautomation.core.io import write_model, write_text
 from ytautomation.core.models import RenderPlan, ScriptArtifact, TimelineArtifact
 from ytautomation.core.settings import Settings
 from ytautomation.modules.subtitle_renderer import build_subtitle_clips
@@ -136,6 +136,7 @@ def render_video(
     settings: Settings,
 ) -> RenderPlan:
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    caption_metadata_path = output_path.with_suffix(".caption.txt")
 
     total = timeline.total_duration_sec
 
@@ -209,12 +210,15 @@ def render_video(
     finally:
         base.close()
 
+    write_text(caption_metadata_path, script.caption_metadata)
+
     plan = RenderPlan(
         job_id=timeline.job_id,
         gameplay_path=gameplay_path,
         gameplay_start_sec=gameplay_start_sec,
         total_duration_sec=total,
         output_path=output_path,
+        caption_metadata_path=caption_metadata_path,
     )
 
     write_model(output_path.parent / "render_plan.json", plan)

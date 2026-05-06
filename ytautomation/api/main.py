@@ -7,6 +7,7 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from ytautomation.core.io import read_json
+from ytautomation.core.paths import safe_filename
 from ytautomation.core.settings import get_settings
 from ytautomation.orchestrator.job_manager import JobManager, run_all_jobs
 
@@ -55,18 +56,24 @@ def get_job(job_id: str, csv_path: str = DEFAULT_CSV_PATH) -> dict[str, object]:
 
     job_root = settings.runs_dir / job_id
     status_path = job_root / "status.json"
+    job_path = job_root / "00_input" / "job.json"
+    video_stem = job_id
+    if job_path.exists():
+        job_data = read_json(job_path)
+        video_stem = safe_filename(str(job_data.get("topic") or job_id), fallback=job_id)
 
     if csv_status is None and not job_root.exists():
         raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
 
     artifacts = {
-        "job": job_root / "00_input" / "job.json",
+        "job": job_path,
         "script_raw": job_root / "01_script" / "raw.txt",
         "script_json": job_root / "01_script" / "script.json",
         "audio_manifest": job_root / "02_audio" / "audio_manifest.json",
         "timeline": job_root / "03_timeline" / "timeline.json",
         "render_plan": job_root / "04_render" / "render_plan.json",
-        "final_video": job_root / "04_render" / "final.mp4",
+        "final_video": job_root / "04_render" / f"{video_stem}.mp4",
+        "caption_metadata": job_root / "04_render" / f"{video_stem}.caption.txt",
     }
 
     return {

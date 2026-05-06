@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
@@ -22,3 +23,12 @@ def ensure_dirs(runs_dir: Path, job_id: str) -> dict[str, Path]:
     for p in dirs.values():
         p.mkdir(parents=True, exist_ok=True)
     return dirs
+
+
+def safe_filename(value: str, fallback: str = "video", max_length: int = 80) -> str:
+    normalized = re.sub(r"[^\w\s.-]", "", value, flags=re.UNICODE)
+    normalized = re.sub(r"\s+", "_", normalized.strip())
+    normalized = normalized.strip("._")
+    if not normalized:
+        normalized = fallback
+    return normalized[:max_length].rstrip("._") or fallback

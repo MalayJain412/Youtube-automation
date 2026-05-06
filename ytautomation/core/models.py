@@ -25,6 +25,7 @@ class ScriptArtifact(BaseModel):
     prompt_used: str
     raw_response_text_path: Path
     parsed_script_path: Path
+    caption_metadata: str
     lines: list[DialogueLine]
 
 
@@ -61,6 +62,7 @@ class RenderPlan(BaseModel):
     gameplay_start_sec: float
     total_duration_sec: float
     output_path: Path
+    caption_metadata_path: Path
 
 
 class JobStatus(BaseModel):

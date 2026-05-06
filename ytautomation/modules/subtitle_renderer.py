@@ -13,12 +13,16 @@ from ytautomation.core.moviepy_compat import set_duration, set_opacity, set_posi
 
 
 SUBTITLE_WRAP_CHARS = 40
-SUBTITLE_FONT_SIZE = 60
+SUBTITLE_FONT_SIZE = 54
 SUBTITLE_WIDTH_RATIO = 0.85
 SUBTITLE_BG_WIDTH_RATIO = 0.9
 SUBTITLE_Y_RATIO = 0.25
-SUBTITLE_BG_PADDING_Y = 30
-SUBTITLE_FONTS = ("Arial-Bold", "Arial Bold", "Arial", "DejaVuSans-Bold", None)
+SUBTITLE_BG_PADDING_Y = 34
+SUBTITLE_STROKE_WIDTH = 5
+SUBTITLE_SHADOW_STROKE_WIDTH = 7
+SUBTITLE_SHADOW_OFFSET = (5, 6)
+SUBTITLE_SHADOW_OPACITY = 0.65
+SUBTITLE_FONTS = ("Impact", "Arial-Bold", "Arial Bold", "Arial", "DejaVuSans-Bold", None)
 SUBTITLE_COLORS = (
     "white",
     "yellow",
@@ -64,11 +68,17 @@ def _wrap_subtitle_text(text: str) -> str:
     return "\n".join(lines) if lines else text
 
 
-def _make_text_clip(text: str, W: int, color: str) -> TextClip:
+def _make_text_clip(
+    text: str,
+    W: int,
+    color: str,
+    stroke_color: str = "black",
+    stroke_width: int = SUBTITLE_STROKE_WIDTH,
+) -> TextClip:
     base_kwargs = {
         "color": color,
-        "stroke_color": "black",
-        "stroke_width": 4,
+        "stroke_color": stroke_color,
+        "stroke_width": stroke_width,
         "method": "caption",
         "size": (int(W * SUBTITLE_WIDTH_RATIO), None),
     }
@@ -131,21 +141,33 @@ def build_subtitle_clips(timeline, script, W, H):
         speaker = str(_get_attr_or_key(segment, "speaker"))
         text = _get_attr_or_key(_script_line(script, index), "text")
 
-        txt_clip = _make_text_clip(_wrap_subtitle_text(text), W, speaker_colors.get(speaker, "white"))
+        wrapped_text = _wrap_subtitle_text(text)
+        txt_clip = _make_text_clip(wrapped_text, W, speaker_colors.get(speaker, "white"))
+        shadow_clip = _make_text_clip(
+            wrapped_text,
+            W,
+            "black",
+            stroke_color="black",
+            stroke_width=SUBTITLE_SHADOW_STROKE_WIDTH,
+        )
+        shadow_clip = set_opacity(shadow_clip, SUBTITLE_SHADOW_OPACITY)
         bg_w = int(W * SUBTITLE_BG_WIDTH_RATIO)
         bg_h = txt_clip.h + SUBTITLE_BG_PADDING_Y
         bg_x, bg_y = _subtitle_position(speaker, speakers, W, H, bg_w)
         text_x = bg_x + int((bg_w - txt_clip.w) / 2)
         text_y = bg_y + int(SUBTITLE_BG_PADDING_Y / 2)
+        shadow_x = text_x + SUBTITLE_SHADOW_OFFSET[0]
+        shadow_y = text_y + SUBTITLE_SHADOW_OFFSET[1]
         bg = ColorClip(
             size=(bg_w, bg_h),
             color=(0, 0, 0),
         )
-        bg = set_opacity(bg, 0.5)
+        bg = set_opacity(bg, 0.55)
 
         subtitle = CompositeVideoClip(
             [
                 set_position(bg, (bg_x, bg_y)),
+                set_position(shadow_clip, (shadow_x, shadow_y)),
                 set_position(txt_clip, (text_x, text_y)),
             ],
             size=(W, H),

@@ -9,7 +9,7 @@ Rules:
 - speaker must be exactly one of: "{character_a}" or "{character_b}"
 - Alternate speakers line-by-line starting with {character_a}.
 - Each line should be 1-2 sentences, punchy, and natural.
-- Total length: 12 to 22 lines.
+- Total length: 10 to 12 lines.
 - No emojis. No stage directions. No narrator.
 - Avoid sensitive/unsafe content.
 
